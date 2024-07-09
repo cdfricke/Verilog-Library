@@ -7,7 +7,7 @@
 // Engineer: Connor Fricke
 // 
 // Create Date: 06/19/2024 10:23:10 AM
-// Module Name: testbench
+// Module Name: testbench_wavegen
 // Project Name: DDS Compiler and CORDIC Algorithm IP Testbench 
 // Target Devices: CMOD S7
 // Description:
@@ -15,7 +15,7 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module testbench(
+module testbench_wavegen(
     `ifndef SIMCLK
         input clk
     `endif
