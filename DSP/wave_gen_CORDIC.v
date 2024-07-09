@@ -6,29 +6,31 @@
 // Create Date: 06/19/2024 12:41:41 PM
 // Module Name: wave_gen_CORDIC
 // Project Name: Wave Synthesis
-// Description: module that generates 
+// Description: wrapper module of the CORDIC IP for since/cosine wave generation
 // 
 // Dependencies: 
 //  AMD Xilinx - CORDIC IP
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module wave_gen_CORDIC(clk, rst, cos, sin);
-
-    parameter PHASE_INC = 256;  // phase change per clock cycle
-    parameter OW = 16;          // CORDIC IP "Output Width"
-    parameter PW = 16;          // CORDIC IP "Input Width"
-
-    input wire              clk, rst;
-    output wire [(OW-1):0]  cos, sin;
+module wave_gen_CORDIC
+#(
+    parameter OW = 16,          // CORDIC IP "Output Width"
+    parameter PW = 16           // CORDIC IP "Input Width"
+)
+(
+    input wire                      clk, rst,
+    input wire signed   [(PW-1):0]  i_phi,
+    output wire signed  [(OW-1):0]  cos,
+    output wire signed  [(OW-1):0]  sin
+);
 
     // +- pi in fixed point notation 1.2.13
     localparam signed [(PW-1):0] PI_POS = 16'b 0110_0100_1000_1000; 
     localparam signed [(PW-1):0] PI_NEG = 16'b 1001_1011_0111_1000; 
 
     // NOTE:
-    // output freq F_OUT roughly equals (PHASE_INC * SAMPLING_FREQ) / 51,472
-    // F_OUT is quantized significantly. See my Python script DSP.py @ https://github.com/cdfricke/DSP
+    // output frequency is quantized significantly. See my Python script DSP.py @ https://github.com/cdfricke/DSP
 
     reg signed  [(PW-1):0]  phase = 0;
     reg                     phase_tvalid = 1'b0;
@@ -51,8 +53,8 @@ module wave_gen_CORDIC(clk, rst, cos, sin);
             phase_tvalid <= 1'b0;
         end else begin
             phase_tvalid = 1'b1;
-            if (phase + PHASE_INC < PI_POS) begin
-                phase <= phase + PHASE_INC;
+            if (phase + i_phi < PI_POS) begin
+                phase <= phase + i_phi;
             end else begin
                 phase <= PI_NEG;
             end

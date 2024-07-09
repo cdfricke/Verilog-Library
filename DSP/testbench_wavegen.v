@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 `define CMOD_CLK_PER 83.33
 `define DEBUG
-//`define SIMCLK
+`define SIMCLK
 //////////////////////////////////////////////////////////////////////////////////
 // Company: The Ohio State University
 // Engineer: Connor Fricke
@@ -24,41 +24,39 @@ module testbench(
     `ifdef SIMCLK
         // drive clock behavior with delays
         reg clk = 1'b0;
-        initial begin
-            clk = 1'b0;
-        end
-        always begin
-            clk = #(`CMOD_CLK_PER/2) ~clk;
-        end
+        always clk = #(`CMOD_CLK_PER/2) ~clk;
     `endif
 
     // UNIT UNDER TEST: wave_gen_CORDIC.v
     wire signed [15:0]  cos_500kHz;      // 1.1.14 fixed point
     wire signed [15:0]  sin_500kHz;      // 1.1.14 fixed point
-    wave_gen_CORDIC  #(.PHASE_INC(2145)) uut_500kHz(
-        .clk(clk), 
-        .rst(1'b0), 
-        .cos(cos_500kHz), 
-        .sin(sin_500kHz)
+    wave_gen_CORDIC uut_500kHz(
+        .clk    (clk), 
+        .rst    (1'b0), 
+        .i_phi  (16'd2145),
+        .cos    (cos_500kHz), 
+        .sin    (sin_500kHz)
     );
 
     wire signed [15:0]  cos_1MHz;        // 1.1.14
     wire signed [15:0]  sin_1MHz;        // 1.1.14
     // F_OUT = (PHASE_INC * CLK_FREQ) / 51,472
-    wave_gen_CORDIC  #(.PHASE_INC(4290)) uut_1MHz(
-        .clk(clk), 
-        .rst(1'b0), 
-        .cos(cos_1MHz), 
-        .sin(sin_1MHz)
+    wave_gen_CORDIC uut_1MHz(
+        .clk    (clk), 
+        .rst    (1'b0),
+        .i_phi  (16'd4290), 
+        .cos    (cos_1MHz), 
+        .sin    (sin_1MHz)
     );
 
     wire signed [15:0]  cos_2MHz;        // 1.1.14 
     wire signed [15:0]  sin_2MHz;        // 1.1.14
-    wave_gen_CORDIC  #(.PHASE_INC(8579)) uut_2MHz(
-        .clk(clk), 
-        .rst(1'b0), 
-        .cos(cos_2MHz), 
-        .sin(sin_2MHz)
+    wave_gen_CORDIC uut_2MHz(
+        .clk    (clk), 
+        .rst    (1'b0), 
+        .i_phi  (16'd8579),
+        .cos    (cos_2MHz), 
+        .sin    (sin_2MHz)
     );
 
     // We might want to use the DDS compiler when the quantization of output frequencies of the CORDIC
@@ -71,38 +69,21 @@ module testbench(
     wire                data_valid;
 
     wave_gen_DDS uut_2_8MHz (
-        .aclk(clk),                              
-        .m_axis_data_tvalid(data_valid),
-        .m_axis_data_tdata({sin_2_8MHz, cos_2_8MHz}) 
+        .aclk               (clk),                              
+        .m_axis_data_tvalid (data_valid),
+        .m_axis_data_tdata  ({sin_2_8MHz, cos_2_8MHz}) 
     );
 
     // pad fractional bits to correct width to match CORDIC wave generator outputs
     assign cos_2_8MHz_wc = {cos_2_8MHz, {8{1'b0}}};
     assign sin_2_8MHz_wc = {sin_2_8MHz, {8{1'b0}}};
 
-    // 
-    reg signed [17:0]   outputCos;      // 1.3.14
-    reg signed [17:0]   outputSin;      // 1.3.14
+    // ** COMBINE COMPONENTS **
+    reg signed [17:0] outputCos;    // 1.3.14
+    reg signed [17:0] outputSin;    // 1.3.14
     always @ (posedge clk) begin
-        outputCos <= cos_500kHz + (cos_1MHz >>> 1) + (cos_2MHz >>> 2) + (cos_2_8MHz_wc >>> 2);
-        outputSin <= sin_500kHz + (sin_1MHz >>> 1) + (sin_2MHz >>> 2) + (sin_2_8MHz_wc >>> 2);
+        outputCos <= cos_500kHz + (cos_1MHz) + (cos_2MHz) + (cos_2_8MHz_wc);
+        outputSin <= sin_500kHz + (sin_1MHz) + (sin_2MHz) + (sin_2_8MHz_wc);
     end
-
-    // ** FILTER SIGNAL **
-    // filter increases bit width by 1 via padding of fraction bits so we go from 18-bit (1.3.14) -> 19-bit (1.3.15)
-    wire signed [18:0] filteredCos;
-    EMA_IIR #(.LGALPHA(3)) smoothingFilter (.clk(clk), .s_in(outputCos), .s_out(filteredCos));
-
-    `ifdef DEBUG
-    ila_0 debuggerILA(
-        .clk(clk), 
-        .probe0(cos_500kHz), 
-        .probe1(cos_1MHz),
-        .probe2(cos_2MHz),
-        .probe3(cos_2_8MHz_wc),
-        .probe4(outputCos),
-        .probe5(filteredCos)
-    );
-    `endif
 
 endmodule
