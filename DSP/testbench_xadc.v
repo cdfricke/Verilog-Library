@@ -85,14 +85,7 @@ module testbench_xadc(
     always #(`CMOD_PER/2) clk = ~clk;
     `endif
 
-    // ** drp interface **
-    wire        rst = 1'b0;         // asynchronous reset
-    wire        drp_en = 1'b1;      // enable
-    wire        drp_we = 1'b0;      // write-enable
-    wire        drp_ready;          // ready
-    wire [15:0] drp_in = 0;         // data bus for control/config registers
-    wire [15:0] drp_out;            // data bus for status registers
-    wire [6:0]  drp_addr = 7'h03;   // control/status register address
+
     // = {2{1'b0}, channel} ??
 
     // ** adc outputs **
@@ -103,28 +96,37 @@ module testbench_xadc(
     wire [4:0]  muxaddr;
     wire        adc_busy;
 
+    // ** drp interface **
+    wire        rst = 1'b0;                   // asynchronous reset
+    wire        drp_en = 1'b1;                // enable
+    wire        drp_we = 1'b0;                // write-enable
+    wire        drp_ready;                    // ready
+    wire [15:0] drp_in = 0;                   // data bus for control/config registers
+    wire [15:0] drp_out;                      // data bus for status registers
+    wire [6:0]  drp_addr = {2'b00, channel};  // control/status register address
+
     reg [11:0] signal;
 
     xadc_0 myADC (
-        .di_in                  (drp_in),   // input wire [15 : 0] : DRP DATA INPUT BUS
+        .di_in                  (drp_in),           // input wire [15 : 0] : DRP DATA INPUT BUS
         .daddr_in               ({2'b00, channel}), // input wire [6 : 0] : DRP ADDRESS BUS
-        .den_in                 (eoc),      // input wire : DRP ENABLE SIGNAL
-        .dwe_in                 (drp_we),   // input wire : DRP WRITE ENABLE SIGNAL
-        .drdy_out               (drp_ready),// output wire : DRP DATA READY SIGNAL
-        .do_out                 (drp_out),  // output wire [15 : 0] : DRP DATA OUTPUT BUS
-        .dclk_in                (clk),      // input wire dclk_in : SYSTEM CLOCK
-        .reset_in               (rst),      // input wire : ASYNCH RESET
-        .vp_in                  (1'b0),     // input wire : DIFFERENTIAL ANALOG INPUT, POSITIVE
-        .vn_in                  (1'b0),     // input wire : DIFFERENTIAL ANALOG INPUT, NEGATIVE
-        .vccint_alarm_out       (alm[0]),   // output wire : POWER SUPPLY ALARM
-        .vccaux_alarm_out       (alm[1]),   // output wire : POWER SUPPLY ALARM
-        .ot_out                 (alm[2]),   // output wire : OVER TEMPERATURE ALARM
-        .channel_out            (channel),  // output wire [4 : 0] : CHANNEL SELECTION OUTPUT
-        .muxaddr_out            (muxaddr),  // output wire [4 : 0] : FOR EXTERNAL MULTIPLEXER MODE
-        .eoc_out                (eoc),      // output wire : END OF CONVERSION
-        .alarm_out              (alm[3]),   // output wire : ANY ALARMS SIGNAL
-        .eos_out                (eos),      // output wire : END OF SEQUENCE
-        .busy_out               (adc_busy)  // output wire : ADC BUSY (during conversion)
+        .den_in                 (eoc),              // input wire : DRP ENABLE SIGNAL
+        .dwe_in                 (drp_we),           // input wire : DRP WRITE ENABLE SIGNAL
+        .drdy_out               (drp_ready),        // output wire : DRP DATA READY SIGNAL
+        .do_out                 (drp_out),          // output wire [15 : 0] : DRP DATA OUTPUT BUS
+        .dclk_in                (clk),              // input wire dclk_in : SYSTEM CLOCK
+        .reset_in               (rst),              // input wire : ASYNCH RESET
+        .vp_in                  (1'b0),             // input wire : DIFFERENTIAL ANALOG INPUT, POSITIVE
+        .vn_in                  (1'b0),             // input wire : DIFFERENTIAL ANALOG INPUT, NEGATIVE
+        .vccint_alarm_out       (alm[0]),           // output wire : POWER SUPPLY ALARM
+        .vccaux_alarm_out       (alm[1]),           // output wire : POWER SUPPLY ALARM
+        .ot_out                 (alm[2]),           // output wire : OVER TEMPERATURE ALARM
+        .alarm_out              (alm[3]),           // output wire : ANY ALARMS SIGNAL
+        .channel_out            (channel),          // output wire [4 : 0] : CHANNEL SELECTION OUTPUT
+        .muxaddr_out            (muxaddr),          // output wire [4 : 0] : FOR EXTERNAL MULTIPLEXER MODE
+        .eoc_out                (eoc),              // output wire : END OF CONVERSION
+        .eos_out                (eos),              // output wire : END OF SEQUENCE
+        .busy_out               (adc_busy)          // output wire : ADC BUSY (during conversion)
     );
 
     always @ (posedge clk) begin
