@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 //////////////////////////////////////////////////////////////////////////////////
-// Company: the Ohio STate University
+// Company: the Ohio State University
 // Engineer: Connor Fricke
 // 
 // Create Date: 06/28/2024 04:20:11 PM
@@ -14,25 +14,28 @@
 
 
 module sincos 
-#(  parameter PW=8, // phase width
+#(  
+    parameter PW=8, // phase width
     parameter OW=8  // output width
 )
 (
-    input wire clk,
-    input wire en,
-    input wire [(PW-1):0]   phase,  // input to CORDIC
+    input wire              i_clk,      // clock
+    input wire              i_valid,    // high when phase input is valid
+    input wire              i_rst,      // asynch reset for CORDIC IP
+    input wire [(PW-1):0]   i_phase,    // input to CORDIC, radians -> 1.2.5
 
-    output wire [(OW-1):0]   sin,    // imaginary from CORDIC
-    output wire [(OW-1):0]   cos     // real from CORDIC
+    output wire [(OW-1):0]  sin,        // sin(i_phase) -> 1.1.6
+    output wire [(OW-1):0]  cos,        // cos(i_phase) -> 1.1.6
+    output wire             o_valid     // high when output is valid
 );
 
-    wire valid;
     cordic_0 CORDIC_8bit (
-        .aclk(clk),                                
-        .s_axis_phase_tvalid(en),  
-        .s_axis_phase_tdata(phase),        // phase input is 1.2.5 format
-        .m_axis_dout_tvalid(valid),    
-        .m_axis_dout_tdata({sin,cos})      // sin and cos both 1.1.6 format
+        .aclk                   (i_clk),  
+        .aresetn                (i_rst),                              
+        .s_axis_phase_tvalid    (i_valid),  
+        .s_axis_phase_tdata     (i_phase),
+        .m_axis_dout_tvalid     (o_valid),  
+        .m_axis_dout_tdata      ({sin,cos}) 
     );
 
 endmodule
