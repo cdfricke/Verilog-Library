@@ -100,7 +100,7 @@ module goertzel_IIR
     // * CONTROL DATA_VALID FLAG *
     initial o_data_valid <= 1'b0;
     always @ (posedge i_clk) begin
-        if (clken) begin
+        if (i_clken) begin
             if ( n == (N-1) ) o_data_valid <= 1'b1;    
             else o_data_valid <= 1'b0;
         end
