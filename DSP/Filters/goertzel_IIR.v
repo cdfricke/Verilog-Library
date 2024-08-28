@@ -24,7 +24,8 @@ module goertzel_IIR
     parameter OW = 32
 )
 (
-    input                   i_clk, i_rst,
+    // i_clk: FPGA Clock, i_rst: external synchronous reset, i_clken: external clk enable, used to decimate input samples
+    input                   i_clk, i_rst, i_clken,
     input signed [(IW-1):0] i_sample,       // Input signal, A(1,10) format
     output reg              o_data_valid,   // 1 clk cycle pulse each time results are latched to output regs
     output wire [(OW-1):0]  o_result_re,    // Re{X(k)}, A(1,10) format
@@ -43,8 +44,10 @@ module goertzel_IIR
     reg [(NW-1):0] n = 0;
 
     always @(posedge i_clk) begin
-        if ( i_rst || (n == (N-1)) ) n <= 0;
-        else n <= n + 1;
+        if (i_clken) begin
+            if ( i_rst || (n == (N-1)) ) n <= 0;
+            else n <= n + 1;
+        end
     end
 
     // * COMBINATORIAL LOGIC STAGE, i.e. CALCULATE s[n] *
@@ -58,12 +61,14 @@ module goertzel_IIR
 
     // * SHIFT MEMORY VALUES *
     always @ (posedge i_clk) begin
-        if ( i_rst || (n == (N-1)) ) begin
-            d_mem[0] <= 0;
-            d_mem[1] <= 0;
-        end else begin
-            d_mem[0] <= sum;
-            d_mem[1] <= d_mem[0];
+        if (i_clken) begin
+            if ( i_rst || (n == (N-1)) ) begin
+                d_mem[0] <= 0;
+                d_mem[1] <= 0;
+            end else begin
+                d_mem[0] <= sum;
+                d_mem[1] <= d_mem[0];
+            end
         end
     end
 
@@ -75,9 +80,11 @@ module goertzel_IIR
         s[N-2] = 0;
     end
     always @ (posedge i_clk) begin
-        if ( n == (N-1) ) begin
-            s[N-1] <= sum;
-            s[N-2] <= d_mem[0];
+        if (i_clken) begin
+            if ( n == (N-1) ) begin
+                s[N-1] <= sum;
+                s[N-2] <= d_mem[0];
+            end
         end
     end
 
@@ -93,8 +100,10 @@ module goertzel_IIR
     // * CONTROL DATA_VALID FLAG *
     initial o_data_valid <= 1'b0;
     always @ (posedge i_clk) begin
-        if ( n == (N-1) ) o_data_valid <= 1'b1;    
-        else o_data_valid <= 1'b0;
+        if (clken) begin
+            if ( n == (N-1) ) o_data_valid <= 1'b1;    
+            else o_data_valid <= 1'b0;
+        end
     end
 
 endmodule
