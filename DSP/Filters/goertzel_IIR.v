@@ -25,8 +25,9 @@ module goertzel_IIR
     parameter OW = 20       // this may need to be increased if window size (N) is increased.   
 )
 (
-    input                   i_clk,          // i_clk: FPGA Clock (expected 187.5 MHz)
-    input                   i_rst,          // i_clk: external synchronous reset
+    input                   i_clk,          // i_clk: RF Clock (expected 375 MHz) 
+    input                   i_clken,        // i_clken: used to decimate signal as necessary
+    input                   i_rst,          // i_rst: external synchronous reset
     // AXI4-Stream INPUT Interface (FROM ADC)
     // `TARGET_NAMED_PORTS_AXI4S_MIN_IF(s_axis_, IW)
     input signed [(IW-1):0] s_axis_tdata,   // AXI4-S -> input data from ADC 
@@ -55,8 +56,10 @@ module goertzel_IIR
     reg [(NW-1):0] n = 0;
 
     always @ (posedge i_clk) begin
-        if ( i_rst || (n == (N-1)) ) n <= 0;
-        else n <= n + 1;
+        if (i_clken) begin
+            if ( i_rst || (n == (N-1)) ) n <= 0;
+            else n <= n + 1;
+        end
     end
 
     // * COMBINATORIAL LOGIC STAGE, i.e. CALCULATE s[n] *
@@ -70,14 +73,15 @@ module goertzel_IIR
 
     // * SHIFT MEMORY VALUES *
     always @ (posedge i_clk) begin
-        if ( i_rst || (n == (N-1)) ) begin
-            d_mem[0] <= 0;
-            d_mem[1] <= 0;
-        end else begin
-            d_mem[0] <= sum;
-            d_mem[1] <= d_mem[0];
+        if (i_clken) begin
+            if ( i_rst || (n == (N-1)) ) begin
+                d_mem[0] <= 0;
+                d_mem[1] <= 0;
+            end else begin
+                d_mem[0] <= sum;
+                d_mem[1] <= d_mem[0];
+            end
         end
-        
     end
 
     // * CALCULATE s[N-1], s[N-2] *
@@ -88,12 +92,14 @@ module goertzel_IIR
         s[N-2] = 0;
     end
     always @ (posedge i_clk) begin
-        if ( i_rst ) begin
-                s[N-1] <= 0;
-                s[N-2] <= 0;
-        end else if ( n == (N-1) ) begin
-                s[N-1] <= sum;
-                s[N-2] <= d_mem[0];
+        if (i_clken) begin
+            if ( i_rst ) begin
+                    s[N-1] <= 0;
+                    s[N-2] <= 0;
+            end else if ( n == (N-1) ) begin
+                    s[N-1] <= sum;
+                    s[N-2] <= d_mem[0];
+            end
         end
     end
 
@@ -113,8 +119,10 @@ module goertzel_IIR
     reg o_data_valid;
     initial o_data_valid <= 1'b0;
     always @ (posedge i_clk) begin
-        if ( i_rst ) o_data_valid <= 1'b0;
-        else if ( n == (N-1) ) o_data_valid <= 1'b1;    
+        if (i_clken) begin
+            if ( i_rst ) o_data_valid <= 1'b0;
+            else if ( n == (N-1) ) o_data_valid <= 1'b1;    
+        end
     end
     assign m_axis_tvalid = o_data_valid;    
     
